@@ -7,7 +7,16 @@ import {
   debugDrawPoint,
   debugDrawVec,
 } from "./draw";
-import { getLineVec, getPerpendicularVec } from "./geometry/geometry";
+import {
+  getInvertedVec,
+  getLinesIntersectPoint,
+  getLineVec,
+  getParallelLine,
+  getPerpendicularVec,
+  getRotatedVec,
+  getPathLinesPoints,
+} from "./geometry/geometry";
+import { aperture, forEach, isNotNil, map } from "ramda";
 
 // -- Setup Canvas
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
@@ -41,22 +50,50 @@ document.querySelector("#container")?.appendChild(app.view as any);
 // 2. Split meshes based on layer
 //
 
-const path: Array<Point> = [
+const pathPoints: Array<Point> = [
   [100, 100],
   [200, 200],
   [200, 300],
+  [500, 400],
+  [400, 300],
 ];
-debugDrawPath(app, path);
 
-const line: Line = [
-  [400, 400],
-  [600, 600],
-];
-debugDrawLine(app, line);
-const lineVec = getLineVec(line);
+const pathLines: Array<Line> = aperture(2, pathPoints);
 
-const perpVec = getPerpendicularVec(lineVec);
-debugDrawVec(app, line[0], perpVec);
+forEach((line: Line) => debugDrawLine(app, line), pathLines);
+
+const pathPoints2 = getPathLinesPoints(pathLines);
+
+forEach((point: Point) => debugDrawPoint(app, point), pathPoints2);
+
+// debugDrawPath(app, pathPoints);
+
+// const drawSegmentLines = (segmentLines: {
+//   leftLine: Line;
+//   rightLine: Line;
+// }) => {
+//   debugDrawLine(app, segmentLines.rightLine);
+//   debugDrawLine(app, segmentLines.leftLine);
+// };
+// forEach(drawSegmentLines, segmentsOffsetLines);
+//
+// const line: Line = [
+//   [500, 500],
+//   [600, 600],
+// ];
+// debugDrawLine(app, line);
+//
+// const line2: Line = [
+//   [600, 500],
+//   [750, 600],
+// ];
+// debugDrawLine(app, line2);
+//
+// const intersect = getLinesIntersectPoint(line, line2);
+// intersect && debugDrawPoint(app, intersect);
+
+// const rotVec = getRotatedVec(lineVec, Math.PI / 8);
+// debugDrawVec(app, line[0], rotVec);
 
 // const perpendicularVec = getPerpendicularVec([])
 
