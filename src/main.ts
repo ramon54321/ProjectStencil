@@ -1,7 +1,13 @@
 import "./style.css";
 import * as PIXI from "pixi.js";
-import { Point } from "./types";
-import { debugDrawLine, debugDrawPoint } from "./draw";
+import { Line, Point, Vec2 } from "./types";
+import {
+  debugDrawLine,
+  debugDrawPath,
+  debugDrawPoint,
+  debugDrawVec,
+} from "./draw";
+import { getLineVec, getPerpendicularVec } from "./geometry/geometry";
 
 // -- Setup Canvas
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
@@ -25,13 +31,42 @@ app.view.style!.width = width + "px";
 app.view.style!.height = height + "px";
 document.querySelector("#container")?.appendChild(app.view as any);
 
-const points: Array<Point> = [
-  [50, 50],
+// Stencil takes a layout file as input (similar to .osm), crops to the desired tile, renders and outputs a raster tile
+// -- LAYOUT_FILE -> PARSER -> TILER -> DRAW -> SAVE
+
+//
+// -- Drawing
+//
+// 1. Compute meshes for each element.
+// 2. Split meshes based on layer
+//
+
+const path: Array<Point> = [
   [100, 100],
+  [200, 200],
+  [200, 300],
 ];
-debugDrawLine(app, points);
-debugDrawPoint(app, points[0]);
-debugDrawPoint(app, points[1]);
+debugDrawPath(app, path);
+
+const line: Line = [
+  [400, 400],
+  [600, 600],
+];
+debugDrawLine(app, line);
+const lineVec = getLineVec(line);
+
+const perpVec = getPerpendicularVec(lineVec);
+debugDrawVec(app, line[0], perpVec);
+
+// const perpendicularVec = getPerpendicularVec([])
+
+// const points: Array<Point> = [
+//   [50, 50],
+//   [100, 100],
+// ];
+// debugDrawLine(app, points);
+// debugDrawPoint(app, points[0]);
+// debugDrawPoint(app, points[1]);
 
 // const points: Array<Point> = [
 //   [100, 100],

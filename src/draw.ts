@@ -1,6 +1,7 @@
 import { Application, DRAW_MODES, Geometry, Mesh, Shader } from "pixi.js";
-import { flatten } from "ramda";
-import { Point } from "./types";
+import { flatten, isNotNil } from "ramda";
+import { getAddVec, getNormalizedVec, getScaledVec } from "./geometry/geometry";
+import { Line, Point, RGB, Vec2 } from "./types";
 import { roundPoints } from "./utils";
 
 export function createMesh(
@@ -77,9 +78,39 @@ export function debugDrawPoint(app: Application, point: Point): Mesh<Shader> {
   return mesh;
 }
 
+export function debugDrawVec(
+  app: Application,
+  base: Point,
+  vec: Vec2
+): Mesh<Shader> {
+  const length = 40;
+  const vecScaled = getScaledVec(getNormalizedVec(vec), length);
+  const tipPoint = getAddVec(base, vecScaled);
+  return debugDrawLine(app, [base, tipPoint], [0.4, 0.5, 0.9]);
+}
+
 export function debugDrawLine(
   app: Application,
-  points: Array<Point>
+  line: Line,
+  color?: RGB
+): Mesh<Shader> {
+  const shader = Shader.from(SHADER_SRC_DEBUG[0], SHADER_SRC_DEBUG[1]);
+  const geometry = new Geometry().addAttribute(
+    "aVertexPosition",
+    flatten(line),
+    2
+  );
+  const mesh = new Mesh(geometry, shader);
+  mesh.shader.uniforms.color = isNotNil(color) ? color : [0.3, 0.9, 0.4];
+  mesh.drawMode = DRAW_MODES.LINE_STRIP;
+  app.stage.addChild(mesh);
+  return mesh;
+}
+
+export function debugDrawPath(
+  app: Application,
+  points: Array<Point>,
+  color?: RGB
 ): Mesh<Shader> {
   const shader = Shader.from(SHADER_SRC_DEBUG[0], SHADER_SRC_DEBUG[1]);
   const geometry = new Geometry().addAttribute(
@@ -88,11 +119,7 @@ export function debugDrawLine(
     2
   );
   const mesh = new Mesh(geometry, shader);
-  mesh.shader.uniforms.color = [
-    0.4 + Math.random() * 0.6,
-    0.4 + Math.random() * 0.6,
-    0.4 + Math.random() * 0.6,
-  ];
+  mesh.shader.uniforms.color = isNotNil(color) ? color : [0.5, 0.9, 0.8];
   mesh.drawMode = DRAW_MODES.LINE_STRIP;
   app.stage.addChild(mesh);
   return mesh;
