@@ -1,7 +1,21 @@
-import { Application, DRAW_MODES, Geometry, Mesh, Shader } from "pixi.js";
-import { flatten, isNotNil } from "ramda";
+import {
+  Application,
+  Container,
+  DRAW_MODES,
+  Geometry,
+  Mesh,
+  Shader,
+} from "pixi.js";
+import { flatten, forEach, isNotNil } from "ramda";
 import { getAddVec, getNormalizedVec, getScaledVec } from "./geometry/geometry";
-import { Line, Point, RGB, Vec2 } from "./types";
+import {
+  Line,
+  Point,
+  RGB,
+  TriangleIndices,
+  Triangulation,
+  Vec2,
+} from "./types";
 import { roundPoints } from "./utils";
 
 export function createMesh(
@@ -60,7 +74,11 @@ const SHADER_SRC_DEBUG = [
   `,
 ];
 
-export function debugDrawPoint(app: Application, point: Point): Mesh<Shader> {
+export function debugDrawPoint(
+  app: Application,
+  point: Point,
+  color?: RGB
+): Mesh<Shader> {
   const shader = Shader.from(SHADER_SRC_DEBUG[0], SHADER_SRC_DEBUG[1]);
   const geometry = new Geometry().addAttribute(
     "aVertexPosition",
@@ -68,11 +86,7 @@ export function debugDrawPoint(app: Application, point: Point): Mesh<Shader> {
     2
   );
   const mesh = new Mesh(geometry, shader);
-  mesh.shader.uniforms.color = [
-    0.4 + Math.random() * 0.6,
-    0.4 + Math.random() * 0.6,
-    0.4 + Math.random() * 0.6,
-  ];
+  mesh.shader.uniforms.color = isNotNil(color) ? color : [0.9, 0.3, 0.9];
   mesh.drawMode = DRAW_MODES.POINTS;
   app.stage.addChild(mesh);
   return mesh;
@@ -123,4 +137,48 @@ export function debugDrawPath(
   mesh.drawMode = DRAW_MODES.LINE_STRIP;
   app.stage.addChild(mesh);
   return mesh;
+}
+
+export function debugDrawClosedPath(
+  app: Application,
+  points: Array<Point>,
+  color?: RGB
+): Mesh<Shader> {
+  const shader = Shader.from(SHADER_SRC_DEBUG[0], SHADER_SRC_DEBUG[1]);
+  const geometry = new Geometry().addAttribute(
+    "aVertexPosition",
+    flatten(points),
+    2
+  );
+  const mesh = new Mesh(geometry, shader);
+  mesh.shader.uniforms.color = isNotNil(color) ? color : [0.5, 0.9, 0.8];
+  mesh.drawMode = DRAW_MODES.LINE_LOOP;
+  app.stage.addChild(mesh);
+  return mesh;
+}
+
+export function debugDrawTriangulation(
+  app: Application,
+  triangulation: Triangulation,
+  color?: RGB,
+  drawMode?: DRAW_MODES
+): Container {
+  const shader = Shader.from(SHADER_SRC_DEBUG[0], SHADER_SRC_DEBUG[1]);
+  shader.uniforms.color = isNotNil(color) ? color : [0.5, 0.9, 0.8];
+  const parent = new Container();
+  const drawTriangle = (triangleIndices: TriangleIndices) => {
+    const geometry = new Geometry()
+      .addAttribute(
+        "aVertexPosition",
+        flatten(triangulation.trianglesPoints),
+        2
+      )
+      .addIndex(flatten(triangleIndices));
+    const mesh = new Mesh(geometry, shader);
+    mesh.drawMode = isNotNil(drawMode) ? drawMode : DRAW_MODES.LINE_LOOP;
+    parent.addChild(mesh);
+  };
+  forEach(drawTriangle, triangulation.trianglesIndices);
+  app.stage.addChild(parent);
+  return parent;
 }

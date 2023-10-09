@@ -1,20 +1,24 @@
-import * as earcut from "earcut";
 import {
   all,
   aperture,
   concat,
-  flatten,
   forEach,
   isEmpty,
   isNotNil,
   last,
   map,
+  prop,
+  reverse,
   splitEvery,
 } from "ramda";
-import { Line, Point, TriangleIndices, Vec2 } from "../types";
-import { bufferToPoints } from "../utils";
+import { Line, Point, ClosedPath, Vec2 } from "../types";
 
 const EPSILON = 1;
+
+export function getDistance(a: Point, b: Point): number {
+  const differenceVec = getSubVec(a, b);
+  return getMagnitude(differenceVec);
+}
 
 export function getMagnitude(vec: Vec2): number {
   return Math.sqrt(Math.pow(vec[0], 2) + Math.pow(vec[1], 2));
@@ -109,10 +113,14 @@ export function getLinesIntersectPoint(
   return [x, y];
 }
 
-export function getThickenedPath(pathPoints: Array<Point>) {
+export function getThickenedPathClosedPath(
+  pathPoints: Array<Point>,
+  thickness: number
+): ClosedPath {
+  const offset = thickness / 2;
   const getSegmentOffsetLines = (segment: Line) => {
-    const rightLine = getParallelLine(segment, 15);
-    const leftLine = getParallelLine(segment, -15);
+    const rightLine = getParallelLine(segment, offset);
+    const leftLine = getParallelLine(segment, -offset);
     return { rightLine, leftLine };
   };
   const miterSegmentsLinesPairs = (
@@ -141,6 +149,12 @@ export function getThickenedPath(pathPoints: Array<Point>) {
   const segmentsOffsetLines = map(getSegmentOffsetLines, segments);
   const segmentsLinesPairs = aperture(2, segmentsOffsetLines);
   forEach(miterSegmentsLinesPairs, segmentsLinesPairs);
+  const leftLines = map(prop("leftLine"), segmentsOffsetLines);
+  const rightLines = map(prop("rightLine"), segmentsOffsetLines);
+  const leftLinePoints = getPathLinesPoints(leftLines);
+  const rightLinePoints = getPathLinesPoints(rightLines);
+  const closedPath = concat(leftLinePoints, reverse(rightLinePoints));
+  return closedPath;
 }
 
 export function getPathLinesPoints(pathLines: Array<Line>): Array<Point> {
@@ -150,6 +164,13 @@ export function getPathLinesPoints(pathLines: Array<Line>): Array<Point> {
   const pathPoints = map(getFirstPointInLine, pathLines);
   pathPoints.push(last(pathLines)![1]);
   return pathPoints;
+}
+
+export function getBufferPoints(buffer: Array<number>): Array<Point> {
+  if (buffer.length % 2 !== 0) {
+    throw Error("Trying to convert odd length buffer to points.");
+  }
+  return splitEvery(2, buffer) as Array<Point>;
 }
 
 export function isPathLinesValid(pathLines: Array<Line>): boolean {
@@ -176,26 +197,4 @@ export function isCoincidentPoint(pointA: Point, pointB: Point): boolean {
     Math.abs(pointA[0] - pointB[0]) <= EPSILON &&
     Math.abs(pointA[1] - pointB[1]) <= EPSILON
   );
-}
-
-export function triangulate(
-  points: Array<Point>,
-  holes: Array<Array<Point>>
-): { trianglesIndices: Array<TriangleIndices>; trianglesPoints: Array<Point> } {
-  const pointsBuffer = concat(flatten(points), flatten(holes));
-  const holesStartIndices = [points.length];
-  holes.forEach((holePoints, index) => {
-    const nextIndex = holesStartIndices[index] + holePoints.length;
-    holesStartIndices.push(nextIndex);
-  });
-  holesStartIndices.splice(holesStartIndices.length - 1);
-  const trianglesIndices = splitEvery(
-    3,
-    earcut(pointsBuffer, holesStartIndices)
-  ) as Array<TriangleIndices>;
-  const trianglesPoints = bufferToPoints(pointsBuffer);
-  return {
-    trianglesIndices,
-    trianglesPoints,
-  };
 }

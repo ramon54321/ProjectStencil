@@ -1,10 +1,21 @@
 import "./style.css";
 import * as PIXI from "pixi.js";
-import { Line, Point, Vec2 } from "./types";
 import {
+  Line,
+  Path,
+  Point,
+  RGB,
+  Triangulation,
+  Vec2,
+  Node,
+  LayoutSerializable,
+} from "./types";
+import {
+  debugDrawClosedPath,
   debugDrawLine,
   debugDrawPath,
   debugDrawPoint,
+  debugDrawTriangulation,
   debugDrawVec,
 } from "./draw";
 import {
@@ -15,13 +26,33 @@ import {
   getPerpendicularVec,
   getRotatedVec,
   getPathLinesPoints,
+  getThickenedPathClosedPath,
+  getDistance,
 } from "./geometry/geometry";
-import { aperture, forEach, isNotNil, map } from "ramda";
+import {
+  aperture,
+  forEach,
+  indexOf,
+  isNil,
+  isNotNil,
+  map,
+  mapObjIndexed,
+  minBy,
+  reduce,
+  values,
+} from "ramda";
+import { DRAW_MODES } from "pixi.js";
+import { getPathTriangulation } from "./meshing/meshing";
+import {
+  layoutSerializableToTraversable,
+  layoutTraversableToSerializable,
+} from "./serialization/serialization";
 
 // -- Setup Canvas
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <div id="container">
     <!-- <canvas id="canvas"></canvas> -->
+    <button id="button-save">Save</button>
   </div>
 `;
 const width = 1024;
@@ -40,107 +71,106 @@ app.view.style!.width = width + "px";
 app.view.style!.height = height + "px";
 document.querySelector("#container")?.appendChild(app.view as any);
 
+document
+  .querySelector<HTMLButtonElement>("#button-save")!
+  .addEventListener("click", (e) => {
+    save();
+  });
+
 // Stencil takes a layout file as input (similar to .osm), crops to the desired tile, renders and outputs a raster tile
 // -- LAYOUT_FILE -> PARSER -> TILER -> DRAW -> SAVE
 
-//
-// -- Drawing
-//
-// 1. Compute meshes for each element.
-// 2. Split meshes based on layer
-//
+const layoutDebugSerial = JSON.stringify({
+  pinMap: {
+    na: { point: [100, 100] },
+    nb: { point: [200, 150] },
+    nc: { point: [150, 200] },
+    nd: { point: [350, 250] },
+    ne: { point: [400, 125] },
+  },
+  wayMap: {
+    wa: { pins: ["na", "nc", "nb"] },
+    wb: { pins: ["nc", "nd", "ne"] },
+  },
+});
+const layoutDebugLocalStorageSerial = localStorage.getItem("stencil.json");
+const layoutTraversable = isNotNil(layoutDebugLocalStorageSerial)
+  ? layoutSerializableToTraversable(JSON.parse(layoutDebugLocalStorageSerial))
+  : layoutSerializableToTraversable(JSON.parse(layoutDebugSerial));
 
-const pathPoints: Array<Point> = [
-  [100, 100],
-  [200, 200],
-  [200, 300],
-  [500, 400],
-  [400, 300],
-];
+// -- Input
+const getEventPosition = (e: any): Point => [e.offsetX, e.offsetY];
+const getNearestNode = (point: Point): [Node | undefined, number] => {
+  let nearestNode: Node | undefined = undefined;
+  let nearestDistance = Infinity;
+  const evaluateNode = (node: Node) => {
+    const distance = getDistance(point, node.point);
+    if (isNil(nearestNode) || distance < nearestDistance) {
+      nearestNode = node;
+      nearestDistance = distance;
+    }
+  };
+  forEach(evaluateNode, values(layoutTraversable.nodeMap as any));
+  return [nearestNode, nearestDistance];
+};
 
-const pathLines: Array<Line> = aperture(2, pathPoints);
+let pressedNode: Node | undefined = undefined;
 
-forEach((line: Line) => debugDrawLine(app, line), pathLines);
+app.view!.addEventListener!("mousedown", (e: any) => {
+  const position = getEventPosition(e);
+  const [nearestNode, nearestDistance] = getNearestNode(position);
+  if (nearestDistance <= 20) {
+    pressedNode = nearestNode;
+  } else {
+    pressedNode = undefined;
+  }
+});
+app.view!.addEventListener!("mouseup", (e: any) => {
+  pressedNode = undefined;
+});
+app.view!.addEventListener!("mousemove", (e: any) => {
+  if (isNil(pressedNode)) return;
+  const position = getEventPosition(e);
+  pressedNode.point[0] = position[0];
+  pressedNode.point[1] = position[1];
+  redraw();
+});
 
-const pathPoints2 = getPathLinesPoints(pathLines);
+redraw();
 
-forEach((point: Point) => debugDrawPoint(app, point), pathPoints2);
+function redraw() {
+  app.stage.removeChildren();
 
-// debugDrawPath(app, pathPoints);
+  // -- Setup Payload for Debugging
+  forEach(
+    (node: Node) => (node.payload.highlight = false),
+    values(layoutTraversable.nodeMap as any)
+  );
+  if (isNotNil(pressedNode)) {
+    forEach((node: Node) => (node.payload.highlight = true), pressedNode.nodes);
+  }
 
-// const drawSegmentLines = (segmentLines: {
-//   leftLine: Line;
-//   rightLine: Line;
-// }) => {
-//   debugDrawLine(app, segmentLines.rightLine);
-//   debugDrawLine(app, segmentLines.leftLine);
-// };
-// forEach(drawSegmentLines, segmentsOffsetLines);
-//
-// const line: Line = [
-//   [500, 500],
-//   [600, 600],
-// ];
-// debugDrawLine(app, line);
-//
-// const line2: Line = [
-//   [600, 500],
-//   [750, 600],
-// ];
-// debugDrawLine(app, line2);
-//
-// const intersect = getLinesIntersectPoint(line, line2);
-// intersect && debugDrawPoint(app, intersect);
+  // const drawWay = (way: Array<string>) => {
+  //   const points = map((node) => (layoutTraversable.pinMap as any)[node], way);
+  //   debugDrawPath(app, points);
+  // };
+  // forEach(drawWay, values(layoutTraversable.wayMap));
 
-// const rotVec = getRotatedVec(lineVec, Math.PI / 8);
-// debugDrawVec(app, line[0], rotVec);
+  const drawNode = (node: Node) => {
+    const color = node.payload.highlight ? [0.4, 0.9, 0.5] : [0.3, 0.3, 0.3];
+    debugDrawPoint(app, node.point, color as any);
+  };
+  forEach(drawNode, values(layoutTraversable.nodeMap) as any);
+}
 
-// const perpendicularVec = getPerpendicularVec([])
+function save() {
+  const layoutSerializable = layoutTraversableToSerializable(layoutTraversable);
+  localStorage.setItem("stencil.json", JSON.stringify(layoutSerializable));
+}
 
-// const points: Array<Point> = [
-//   [50, 50],
-//   [100, 100],
-// ];
-// debugDrawLine(app, points);
-// debugDrawPoint(app, points[0]);
-// debugDrawPoint(app, points[1]);
-
-// const points: Array<Point> = [
-//   [100, 100],
-//   [0, 500],
-//   [500, 500],
-//   [500, 0],
-//   [0, 0],
-// ];
-// const holesPoints: Array<Array<Point>> = [
-//   [
-//     [250, 250],
-//     [300, 250],
-//     [300, 300],
-//     [250, 300],
-//   ],
-//   [
-//     [350, 250],
-//     [400, 250],
-//     [400, 300],
-//     [350, 300],
-//   ],
-//   [
-//     [300, 100],
-//     [350, 100],
-//     [350, 200],
-//     [250, 200],
-//     [250, 150],
-//     [300, 150],
-//   ],
-// ];
-// const triangulation = triangulate(points, holesPoints);
-//
-// const createIndicesGroup = (triangleIndices: TriangleIndices) => {
-//   const mesh = createMesh(triangulation.trianglesPoints, triangleIndices);
-//   // mesh.drawMode = 2;
-//   mesh.position.set(200, 200);
-//   mesh.tint = Math.random();
-//   app.stage.addChild(mesh);
-// };
-// forEach(createIndicesGroup, triangulation.trianglesIndices);
+// function load() {
+//   const newLayoutTraversable = layoutSerializableToTraversable(
+//     JSON.parse(localStorage.getItem("stencil.json")!)
+//   );
+//   layoutTraversable = newLayoutTraversable
+// }
