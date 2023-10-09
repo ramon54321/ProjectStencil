@@ -13,12 +13,16 @@ export type LayoutTraversable = {
   nodeMap: Record<string, Node>;
   pathMap: Record<string, Path>;
 };
+
 export type Pin = {
   point: Point;
 };
 export type Way = {
   pins: Array<string>;
+  tags?: Array<Tag>;
 };
+export type Tag = [string, any];
+
 export type Node = {
   id: string;
   point: Point;
@@ -28,6 +32,7 @@ export type Node = {
 };
 export type Path = {
   nodes: Array<Node>;
+  tags: Array<Tag>;
 };
 
 // -- Mesh

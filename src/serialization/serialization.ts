@@ -1,4 +1,4 @@
-import { forEach, indexOf, map, mapObjIndexed, values } from "ramda";
+import { forEach, indexOf, isNotNil, map, mapObjIndexed, values } from "ramda";
 import { LayoutTraversable, LayoutSerializable, Node, Path } from "../types";
 
 export function layoutSerializableToTraversable(
@@ -15,7 +15,10 @@ export function layoutSerializableToTraversable(
     layout.pinMap
   );
   const pathMap = map(
-    (way) => ({ nodes: map((pin) => nodeMap[pin], way.pins) }),
+    (way) => ({
+      nodes: map((pin) => nodeMap[pin], way.pins),
+      tags: isNotNil(way.tags) ? way.tags : [],
+    }),
     layout.wayMap
   );
   const addPathToNodesOfPath = (path: Path) => {
@@ -51,7 +54,7 @@ export function layoutTraversableToSerializable(
 ): LayoutSerializable {
   const pinMap = map((node) => ({ point: node.point }), layout.nodeMap);
   const wayMap = map(
-    (path) => ({ pins: map((node) => node.id, path.nodes) }),
+    (path) => ({ pins: map((node) => node.id, path.nodes), tags: path.tags }),
     layout.pathMap
   );
   return {

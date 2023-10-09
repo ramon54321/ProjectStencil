@@ -47,6 +47,7 @@ import {
   layoutSerializableToTraversable,
   layoutTraversableToSerializable,
 } from "./serialization/serialization";
+import { composeLayoutTraversable } from "./composition/composition";
 
 // -- Setup Canvas
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
@@ -80,7 +81,7 @@ document
 // Stencil takes a layout file as input (similar to .osm), crops to the desired tile, renders and outputs a raster tile
 // -- LAYOUT_FILE -> PARSER -> TILER -> DRAW -> SAVE
 
-const layoutDebugSerial = JSON.stringify({
+const layoutDebug: LayoutSerializable = {
   pinMap: {
     na: { point: [100, 100] },
     nb: { point: [200, 150] },
@@ -89,14 +90,14 @@ const layoutDebugSerial = JSON.stringify({
     ne: { point: [400, 125] },
   },
   wayMap: {
-    wa: { pins: ["na", "nc", "nb"] },
-    wb: { pins: ["nc", "nd", "ne"] },
+    wa: { pins: ["na", "nc", "nb"], tags: [["road", "small"]] },
+    wb: { pins: ["nc", "nd", "ne"], tags: [["road", "small"]] },
   },
-});
+};
 const layoutDebugLocalStorageSerial = localStorage.getItem("stencil.json");
 const layoutTraversable = isNotNil(layoutDebugLocalStorageSerial)
   ? layoutSerializableToTraversable(JSON.parse(layoutDebugLocalStorageSerial))
-  : layoutSerializableToTraversable(JSON.parse(layoutDebugSerial));
+  : layoutSerializableToTraversable(layoutDebug);
 
 // -- Input
 const getEventPosition = (e: any): Point => [e.offsetX, e.offsetY];
@@ -124,6 +125,7 @@ app.view!.addEventListener!("mousedown", (e: any) => {
   } else {
     pressedNode = undefined;
   }
+  redraw();
 });
 app.view!.addEventListener!("mouseup", (e: any) => {
   pressedNode = undefined;
@@ -155,6 +157,8 @@ function redraw() {
   //   debugDrawPath(app, points);
   // };
   // forEach(drawWay, values(layoutTraversable.wayMap));
+
+  composeLayoutTraversable(layoutTraversable);
 
   const drawNode = (node: Node) => {
     const color = node.payload.highlight ? [0.4, 0.9, 0.5] : [0.3, 0.3, 0.3];
