@@ -42,5 +42,12 @@ export type Triangulation = {
   trianglesPoints: Array<Point>;
 };
 
+// -- Composition
+export type CompositionLayer = {
+  triangulations: Array<Triangulation>;
+  style: { color: RGB };
+};
+export type Composition = Array<CompositionLayer>;
+
 // -- Drawing
 export type RGB = [number, number, number];

@@ -9,6 +9,7 @@ import {
   Vec2,
   Node,
   LayoutSerializable,
+  CompositionLayer,
 } from "./types";
 import {
   debugDrawClosedPath,
@@ -90,7 +91,7 @@ const layoutDebug: LayoutSerializable = {
     ne: { point: [400, 125] },
   },
   wayMap: {
-    wa: { pins: ["na", "nc", "nb"], tags: [["road", "small"]] },
+    wa: { pins: ["na", "nc", "nb"], tags: [["road", "medium"]] },
     wb: { pins: ["nc", "nd", "ne"], tags: [["road", "small"]] },
   },
 };
@@ -152,19 +153,21 @@ function redraw() {
     forEach((node: Node) => (node.payload.highlight = true), pressedNode.nodes);
   }
 
-  // const drawWay = (way: Array<string>) => {
-  //   const points = map((node) => (layoutTraversable.pinMap as any)[node], way);
-  //   debugDrawPath(app, points);
-  // };
-  // forEach(drawWay, values(layoutTraversable.wayMap));
-
-  composeLayoutTraversable(layoutTraversable);
-
-  const drawNode = (node: Node) => {
-    const color = node.payload.highlight ? [0.4, 0.9, 0.5] : [0.3, 0.3, 0.3];
-    debugDrawPoint(app, node.point, color as any);
+  const composition = composeLayoutTraversable(layoutTraversable);
+  const drawCompositionLayer = (layer: CompositionLayer) => {
+    const color = layer.style.color;
+    const drawTriangulation = (triangulation: Triangulation) => {
+      debugDrawTriangulation(app, triangulation, color, DRAW_MODES.TRIANGLES);
+    };
+    forEach(drawTriangulation, layer.triangulations);
   };
-  forEach(drawNode, values(layoutTraversable.nodeMap) as any);
+  forEach(drawCompositionLayer, composition);
+
+  // const drawNode = (node: Node) => {
+  //   const color = node.payload.highlight ? [0.4, 0.9, 0.5] : [0.3, 0.3, 0.3];
+  //   debugDrawPoint(app, node.point, color as any);
+  // };
+  // forEach(drawNode, values(layoutTraversable.nodeMap) as any);
 }
 
 function save() {
