@@ -1,3 +1,5 @@
+import { Application } from "pixi.js";
+
 // -- Geometry
 export type Vec2 = [number, number];
 export type Point = [number, number];
@@ -51,3 +53,18 @@ export type Composition = Array<CompositionLayer>;
 
 // -- Drawing
 export type RGB = [number, number, number];
+
+// -- Editor
+export type EditorState = {
+  app: Application;
+  layoutTraversable: LayoutTraversable;
+  interaction: {
+    clickDownPoint: Point;
+    pressedNode: Node | undefined;
+    selectedNode: Node | undefined;
+    selectedPaths: Array<Path> | undefined;
+    selectedPath: Path | undefined;
+    interactPhase: InteractPhase;
+  };
+};
+export type InteractPhase = "TryPressNode" | "TrySelectNode" | "TrySelectPath";

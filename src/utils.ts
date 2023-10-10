@@ -12,3 +12,7 @@ export function roundPoint(point: Point): Point {
 export function tagToTagString(tag: Tag): string {
   return join(":", tag);
 }
+
+export function assert(expression: boolean, message?: string) {
+  if (!expression) throw Error(message);
+}
