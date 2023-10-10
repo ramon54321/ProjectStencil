@@ -29,11 +29,14 @@ import {
   getPathLinesPoints,
   getThickenedPathClosedPath,
   getDistance,
+  getPointsPathLines,
+  getPointLineDistance,
 } from "./geometry/geometry";
 import {
   aperture,
   forEach,
   indexOf,
+  isEmpty,
   isNil,
   isNotNil,
   map,
@@ -101,6 +104,7 @@ const layoutTraversable = isNotNil(layoutDebugLocalStorageSerial)
   : layoutSerializableToTraversable(layoutDebug);
 
 // -- Input
+const CLICK_DETECTION_DISTANCE = 20;
 const getEventPosition = (e: any): Point => [e.offsetX, e.offsetY];
 const getNearestNode = (point: Point): [Node | undefined, number] => {
   let nearestNode: Node | undefined = undefined;
@@ -115,27 +119,134 @@ const getNearestNode = (point: Point): [Node | undefined, number] => {
   forEach(evaluateNode, values(layoutTraversable.nodeMap as any));
   return [nearestNode, nearestDistance];
 };
+const getNearbyPaths = (point: Point, paths: Array<Path>): Array<Path> => {
+  const nearbyPaths: Array<Path> = [];
+  const evaluatePath = (path: Path) => {
+    const getNearestLineDistance = (lines: Array<Line>): number => {
+      let nearestDistance = Infinity;
+      const evaluateLine = (line: Line) => {
+        const distance = getPointLineDistance(line, point);
+        if (distance <= nearestDistance) {
+          nearestDistance = distance;
+        }
+      };
+      forEach(evaluateLine, lines);
+      return nearestDistance;
+    };
+    const pathDistance = getNearestLineDistance(
+      getPointsPathLines(map((node) => node.point, path.nodes))
+    );
+    if (pathDistance <= CLICK_DETECTION_DISTANCE) {
+      nearbyPaths.push(path);
+    }
+  };
+  forEach(evaluatePath, paths);
+  return nearbyPaths;
+};
+
+const assert = (expression: boolean, message?: string) => {
+  if (!expression) throw Error(message);
+};
+
+type InteractPhase = "TryPressNode" | "TrySelectNode" | "TrySelectPath";
+
+let clickDownPoint: Point = [0, 0];
 
 let pressedNode: Node | undefined = undefined;
+let selectedNode: Node | undefined = undefined;
+let selectedPaths: Array<Path> | undefined = undefined;
+let selectedPath: Path | undefined = undefined;
+
+let interactPhase: InteractPhase = "TryPressNode";
+
+const validatePhase = () => {
+  if (interactPhase === "TryPressNode") {
+    assert(isNil(pressedNode));
+    assert(isNil(selectedNode));
+    assert(isNil(selectedPaths));
+    assert(isNil(selectedPath));
+  } else if (interactPhase === "TrySelectNode") {
+    assert(isNotNil(pressedNode));
+    assert(isNil(selectedNode));
+    assert(isNil(selectedPaths));
+    assert(isNil(selectedPath));
+  } else if (interactPhase === "TrySelectPath") {
+    assert(isNil(pressedNode));
+    assert(isNotNil(selectedNode));
+    assert(isNil(selectedPaths));
+    assert(isNil(selectedPath));
+  }
+};
 
 app.view!.addEventListener!("mousedown", (e: any) => {
+  validatePhase();
+
   const position = getEventPosition(e);
-  const [nearestNode, nearestDistance] = getNearestNode(position);
-  if (nearestDistance <= 20) {
-    pressedNode = nearestNode;
-  } else {
+  clickDownPoint[0] = position[0];
+  clickDownPoint[1] = position[1];
+  const [nearestNode, nearestNodeDistance] = getNearestNode(position);
+
+  if (interactPhase === "TryPressNode") {
+    if (nearestNodeDistance <= CLICK_DETECTION_DISTANCE) {
+      pressedNode = nearestNode;
+    }
+  } else if (interactPhase === "TrySelectNode") {
+    const pressedNodeDistance = getDistance(position, pressedNode!.point);
+    if (pressedNodeDistance <= CLICK_DETECTION_DISTANCE) {
+      selectedNode = pressedNode;
+    }
     pressedNode = undefined;
+  } else if (interactPhase === "TrySelectPath") {
+    const nearbyPaths = getNearbyPaths(position, selectedNode!.paths);
+    if (!isEmpty(nearbyPaths)) {
+      selectedPaths = nearbyPaths;
+    }
+    if (isNotNil(selectedPaths) && !isEmpty(selectedPaths)) {
+      selectedPath = selectedPaths[0];
+    }
+    selectedNode = undefined;
   }
+
+  redraw();
+});
+app.view!.addEventListener!("mousemove", (e: any) => {
+  const position = getEventPosition(e);
+  const distanceFromClick = getDistance(clickDownPoint, position);
+
+  if (interactPhase === "TryPressNode") {
+    if (isNotNil(pressedNode)) {
+      pressedNode.point[0] = position[0];
+      pressedNode.point[1] = position[1];
+    }
+  } else if (interactPhase === "TrySelectPath") {
+    if (isNotNil(selectedPaths)) {
+      const index = Math.floor(distanceFromClick / 20) % selectedPaths.length;
+      selectedPath = selectedPaths[index];
+    }
+    selectedPaths = undefined;
+  }
+
   redraw();
 });
 app.view!.addEventListener!("mouseup", (e: any) => {
-  pressedNode = undefined;
-});
-app.view!.addEventListener!("mousemove", (e: any) => {
-  if (isNil(pressedNode)) return;
-  const position = getEventPosition(e);
-  pressedNode.point[0] = position[0];
-  pressedNode.point[1] = position[1];
+  if (interactPhase === "TryPressNode") {
+    if (isNotNil(pressedNode)) {
+      interactPhase = "TrySelectNode";
+    }
+  } else if (interactPhase === "TrySelectNode") {
+    if (isNotNil(selectedNode)) {
+      interactPhase = "TrySelectPath";
+    } else {
+      interactPhase = "TryPressNode";
+    }
+  } else if (interactPhase === "TrySelectPath") {
+    if (isNotNil(selectedPath)) {
+      console.log("In some phase where you deal with the selected path");
+    } else {
+      interactPhase = "TryPressNode";
+    }
+  }
+
   redraw();
 });
 
@@ -144,30 +255,63 @@ redraw();
 function redraw() {
   app.stage.removeChildren();
 
-  // -- Setup Payload for Debugging
+  // -- Render Editor
+
+  // -- Reset Nodes
   forEach(
-    (node: Node) => (node.payload.highlight = false),
+    (node: Node) => (node.payload.highlight = undefined),
     values(layoutTraversable.nodeMap as any)
   );
+
+  // -- Highlight Interesting Nodes
   if (isNotNil(pressedNode)) {
-    forEach((node: Node) => (node.payload.highlight = true), pressedNode.nodes);
+    forEach(
+      (node: Node) => (node.payload.highlight = [0.4, 0.9, 0.5]),
+      pressedNode.nodes
+    );
+  }
+  if (isNotNil(selectedNode)) {
+    selectedNode.payload.highlight = [0.9, 0.4, 0.5];
+    const drawPath = (path: Path) => {
+      debugDrawPath(
+        app,
+        map((node) => node.point, path.nodes)
+      );
+    };
+    forEach(drawPath, selectedNode.paths);
+  }
+  if (isNotNil(selectedPath)) {
+    const drawPath = (path: Path) => {
+      debugDrawPath(
+        app,
+        map((node) => node.point, path.nodes),
+        [0.4, 0.4, 0.95]
+      );
+    };
+    drawPath(selectedPath);
   }
 
-  const composition = composeLayoutTraversable(layoutTraversable);
-  const drawCompositionLayer = (layer: CompositionLayer) => {
-    const color = layer.style.color;
-    const drawTriangulation = (triangulation: Triangulation) => {
-      debugDrawTriangulation(app, triangulation, color, DRAW_MODES.TRIANGLES);
-    };
-    forEach(drawTriangulation, layer.triangulations);
+  // -- Draw Nodes
+  const drawNode = (node: Node) => {
+    const color = node.payload.highlight
+      ? node.payload.highlight
+      : [0.3, 0.3, 0.3];
+    debugDrawPoint(app, node.point, color as any);
   };
-  forEach(drawCompositionLayer, composition);
+  forEach(drawNode, values(layoutTraversable.nodeMap) as any);
 
-  // const drawNode = (node: Node) => {
-  //   const color = node.payload.highlight ? [0.4, 0.9, 0.5] : [0.3, 0.3, 0.3];
-  //   debugDrawPoint(app, node.point, color as any);
+  //
+  // -- Render Composition
+  //
+  // const composition = composeLayoutTraversable(layoutTraversable);
+  // const drawCompositionLayer = (layer: CompositionLayer) => {
+  //   const color = layer.style.color;
+  //   const drawTriangulation = (triangulation: Triangulation) => {
+  //     debugDrawTriangulation(app, triangulation, color, DRAW_MODES.TRIANGLES);
+  //   };
+  //   forEach(drawTriangulation, layer.triangulations);
   // };
-  // forEach(drawNode, values(layoutTraversable.nodeMap) as any);
+  // forEach(drawCompositionLayer, composition);
 }
 
 function save() {

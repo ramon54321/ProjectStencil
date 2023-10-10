@@ -90,6 +90,38 @@ export function getParallelLine(line: Line, offset: number): Line {
   return [pointA, pointB];
 }
 
+export function getPointLineDistance(line: Line, point: Point): number {
+  const a = line[0];
+  const b = line[1];
+  const AToB = [b[0] - a[0], b[1] - a[1]];
+  const BToE = [point[0] - b[0], point[1] - b[1]];
+  const AToE = [point[0] - a[0], point[1] - a[1]];
+  const ABDotBE = AToB[0] * BToE[0] + AToB[1] * BToE[1];
+  const ABDotAE = AToB[0] * AToE[0] + AToB[1] * AToE[1];
+
+  // B is closest
+  if (ABDotBE > 0) {
+    const dy = point[1] - b[1];
+    const dx = point[0] - b[0];
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+  // A is closest
+  else if (ABDotAE < 0) {
+    const dy = point[1] - a[1];
+    const dx = point[0] - a[0];
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+  // Perpendicular is closest
+  else {
+    const x1 = AToB[0];
+    const y1 = AToB[1];
+    const x2 = AToE[0];
+    const y2 = AToE[1];
+    const mod = Math.sqrt(x1 * x1 + y1 * y1);
+    return Math.abs(x1 * y2 - y1 * x2) / mod;
+  }
+}
+
 export function getLinesIntersectPoint(
   lineA: Line,
   lineB: Line
@@ -164,6 +196,12 @@ export function getPathLinesPoints(pathLines: Array<Line>): Array<Point> {
   const pathPoints = map(getFirstPointInLine, pathLines);
   pathPoints.push(last(pathLines)![1]);
   return pathPoints;
+}
+
+export function getPointsPathLines(points: Array<Point>): Array<Line> {
+  if (isEmpty(points)) return [];
+  if (points.length < 2) return [];
+  return aperture(2, points);
 }
 
 export function getBufferPoints(buffer: Array<number>): Array<Point> {
