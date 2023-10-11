@@ -73,3 +73,11 @@ export type InteractPhase =
   | "TrySelectNode"
   | "TrySelectPath"
   | "TrySelectPathNode";
+export type InteractPhaseHandler = {
+  isEditorStateValid: (editorState: EditorState) => boolean;
+  onMouseDown: (editorState: EditorState, mousePoint: Point) => void;
+  onMouseMove: (editorState: EditorState, mousePoint: Point) => void;
+  onMouseUp: (editorState: EditorState, mousePoint: Point) => void;
+  onKeyDown: (editorState: EditorState, mousePoint: Point, key: string) => void;
+  onKeyUp: (editorState: EditorState, mousePoint: Point, key: string) => void;
+};

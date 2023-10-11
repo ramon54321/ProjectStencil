@@ -1,17 +1,12 @@
 import "./style.css";
 import * as PIXI from "pixi.js";
-import { EditorState, LayoutSerializable } from "./types";
+import { EditorState, LayoutSerializable, Point } from "./types";
 import { isNotNil } from "ramda";
 import {
   layoutSerializableToTraversable,
   layoutTraversableToSerializable,
-} from "./serialization/serialization";
-import {
-  getEventPosition,
-  onMouseDown,
-  onMouseMove,
-  onMouseUp,
-} from "./editor/editor";
+} from "./layout/serialization";
+import { onMouseDown, onMouseMove, onMouseUp } from "./editor/editor";
 
 // -- Setup Canvas
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
@@ -63,6 +58,9 @@ const layoutTraversable = isNotNil(layoutDebugLocalStorageSerial)
   : layoutSerializableToTraversable(layoutDebug);
 
 // -- Editor
+function getEventPosition(e: any): Point {
+  return [e.offsetX, e.offsetY];
+}
 const editorState: EditorState = {
   app,
   layoutTraversable,
