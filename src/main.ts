@@ -72,6 +72,7 @@ const editorState: EditorState = {
     selectedNode: undefined,
     selectedPaths: undefined,
     selectedPath: undefined,
+    selectedPathNode: undefined,
     interactPhase: "TryPressNode",
   },
 };

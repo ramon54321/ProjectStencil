@@ -64,7 +64,12 @@ export type EditorState = {
     selectedNode: Node | undefined;
     selectedPaths: Array<Path> | undefined;
     selectedPath: Path | undefined;
+    selectedPathNode: Node | undefined;
     interactPhase: InteractPhase;
   };
 };
-export type InteractPhase = "TryPressNode" | "TrySelectNode" | "TrySelectPath";
+export type InteractPhase =
+  | "TryPressNode"
+  | "TrySelectNode"
+  | "TrySelectPath"
+  | "TrySelectPathNode";

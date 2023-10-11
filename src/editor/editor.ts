@@ -5,14 +5,7 @@ import {
   getPointLineDistance,
   getPointsPathLines,
 } from "../geometry/geometry";
-import {
-  Line,
-  Path,
-  Point,
-  Node,
-  LayoutTraversable,
-  EditorState,
-} from "../types";
+import { Line, Path, Point, Node, EditorState } from "../types";
 import { assert } from "../utils";
 
 const CLICK_DETECTION_DISTANCE = 20;
@@ -22,7 +15,7 @@ export function getEventPosition(e: any): Point {
 }
 
 export function getNearestNode(
-  layoutTraversable: LayoutTraversable,
+  nodes: Array<Node>,
   point: Point
 ): [Node | undefined, number] {
   let nearestNode: Node | undefined = undefined;
@@ -34,7 +27,7 @@ export function getNearestNode(
       nearestDistance = distance;
     }
   };
-  forEach(evaluateNode, values(layoutTraversable.nodeMap as any));
+  forEach(evaluateNode, nodes);
   return [nearestNode, nearestDistance];
 }
 
@@ -90,7 +83,7 @@ export function onMouseDown(editorState: EditorState, position: Point) {
   interaction.clickDownPoint[0] = position[0];
   interaction.clickDownPoint[1] = position[1];
   const [nearestNode, nearestNodeDistance] = getNearestNode(
-    editorState.layoutTraversable,
+    values(editorState.layoutTraversable.nodeMap),
     position
   );
 
@@ -122,6 +115,16 @@ export function onMouseDown(editorState: EditorState, position: Point) {
       interaction.selectedPath = interaction.selectedPaths[0];
     }
     interaction.selectedNode = undefined;
+  } else if (interaction.interactPhase === "TrySelectPathNode") {
+    const [nearestPathNode, nearestPathNodeDistance] = getNearestNode(
+      interaction.selectedPath!.nodes,
+      position
+    );
+    if (nearestPathNodeDistance <= CLICK_DETECTION_DISTANCE) {
+      interaction.selectedPathNode = nearestPathNode;
+    } else {
+      interaction.selectedPath = undefined;
+    }
   }
 
   redraw(editorState);
@@ -162,11 +165,19 @@ export function onMouseUp(editorState: EditorState, position: Point) {
     }
   } else if (interaction.interactPhase === "TrySelectPath") {
     if (isNotNil(interaction.selectedPath)) {
-      console.log("In some phase where you deal with the selected path");
+      interaction.interactPhase = "TrySelectPathNode";
     } else {
       interaction.interactPhase = "TryPressNode";
     }
     interaction.selectedPaths = undefined;
+  } else if (interaction.interactPhase === "TrySelectPathNode") {
+    if (isNotNil(interaction.selectedPathNode)) {
+      console.log("Some selected path node state");
+      // interaction.interactPhase = "TrySelectPathNode";
+    } else {
+      interaction.selectedPath = undefined;
+      interaction.interactPhase = "TryPressNode";
+    }
   }
 
   redraw(editorState);
@@ -211,6 +222,9 @@ export function redraw(editorState: EditorState) {
       );
     };
     drawPath(interaction.selectedPath);
+  }
+  if (isNotNil(interaction.selectedPathNode)) {
+    interaction.selectedPathNode.payload.highlight = [0.3, 0.4, 0.9];
   }
 
   // -- Draw Nodes
