@@ -72,6 +72,7 @@ const editorState: EditorState = {
   layoutTraversable,
   interaction: {
     clickDownPoint: [0, 0],
+    didMouseMove: false,
     pressedNode: undefined,
     selectedNode: undefined,
     selectedPaths: undefined,

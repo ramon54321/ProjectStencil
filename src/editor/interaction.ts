@@ -18,7 +18,8 @@ const interactPhaseDefs: Record<InteractPhase, InteractPhaseHandler> = {
         isNil(editorState.interaction.pressedNode) &&
         isNil(editorState.interaction.selectedNode) &&
         isNil(editorState.interaction.selectedPaths) &&
-        isNil(editorState.interaction.selectedPath)
+        isNil(editorState.interaction.selectedPath) &&
+        isNil(editorState.interaction.selectedPathNode)
       );
     },
     onMouseDown: (editorState: EditorState, mousePoint: Point) => {
@@ -37,49 +38,15 @@ const interactPhaseDefs: Record<InteractPhase, InteractPhaseHandler> = {
       }
     },
     onMouseUp: (editorState: EditorState, mousePoint: Point) => {
-      if (isNotNil(editorState.interaction.pressedNode)) {
-        editorState.interaction.interactPhase = "TrySelectNode";
-      }
-    },
-    onKeyDown: (
-      editorState: EditorState,
-      mousePoint: Point,
-      keyEvent: KeyEvent
-    ) => {},
-    onKeyUp: (
-      editorState: EditorState,
-      mousePoint: Point,
-      keyEvent: KeyEvent
-    ) => {},
-  },
-
-  TrySelectNode: {
-    isEditorStateValid: (editorState: EditorState): boolean => {
-      return (
-        isNotNil(editorState.interaction.pressedNode) &&
-        isNil(editorState.interaction.selectedNode) &&
-        isNil(editorState.interaction.selectedPaths) &&
-        isNil(editorState.interaction.selectedPath)
-      );
-    },
-    onMouseDown: (editorState: EditorState, mousePoint: Point) => {
-      const pressedNodeDistance = getDistance(
-        mousePoint,
-        editorState.interaction.pressedNode!.point
-      );
-      if (pressedNodeDistance <= CLICK_DETECTION_DISTANCE) {
+      if (
+        !editorState.interaction.didMouseMove &&
+        isNotNil(editorState.interaction.pressedNode)
+      ) {
         editorState.interaction.selectedNode =
           editorState.interaction.pressedNode;
+        editorState.interaction.interactPhase = "TrySelectPath";
       }
       editorState.interaction.pressedNode = undefined;
-    },
-    onMouseMove: (editorState: EditorState, mousePoint: Point) => {},
-    onMouseUp: (editorState: EditorState, mousePoint: Point) => {
-      if (isNotNil(editorState.interaction.selectedNode)) {
-        editorState.interaction.interactPhase = "TrySelectPath";
-      } else {
-        editorState.interaction.interactPhase = "TryPressNode";
-      }
     },
     onKeyDown: (
       editorState: EditorState,
@@ -99,7 +66,8 @@ const interactPhaseDefs: Record<InteractPhase, InteractPhaseHandler> = {
         isNil(editorState.interaction.pressedNode) &&
         isNotNil(editorState.interaction.selectedNode) &&
         isNil(editorState.interaction.selectedPaths) &&
-        isNil(editorState.interaction.selectedPath)
+        isNil(editorState.interaction.selectedPath) &&
+        isNil(editorState.interaction.selectedPathNode)
       );
     },
     onMouseDown: (editorState: EditorState, mousePoint: Point) => {
@@ -118,7 +86,6 @@ const interactPhaseDefs: Record<InteractPhase, InteractPhaseHandler> = {
         editorState.interaction.selectedPath =
           editorState.interaction.selectedPaths[0];
       }
-      editorState.interaction.selectedNode = undefined;
     },
     onMouseMove: (editorState: EditorState, mousePoint: Point) => {
       const distanceFromClick = getDistance(
@@ -127,7 +94,7 @@ const interactPhaseDefs: Record<InteractPhase, InteractPhaseHandler> = {
       );
       if (isNotNil(editorState.interaction.selectedPaths)) {
         const index =
-          Math.floor(distanceFromClick / 20) %
+          Math.floor(distanceFromClick / 60) %
           editorState.interaction.selectedPaths.length;
         editorState.interaction.selectedPath =
           editorState.interaction.selectedPaths[index];
@@ -139,6 +106,7 @@ const interactPhaseDefs: Record<InteractPhase, InteractPhaseHandler> = {
       } else {
         editorState.interaction.interactPhase = "TryPressNode";
       }
+      editorState.interaction.selectedNode = undefined;
       editorState.interaction.selectedPaths = undefined;
     },
     onKeyDown: (
@@ -155,7 +123,13 @@ const interactPhaseDefs: Record<InteractPhase, InteractPhaseHandler> = {
 
   TrySelectPathNode: {
     isEditorStateValid: (editorState: EditorState): boolean => {
-      return true;
+      return (
+        isNil(editorState.interaction.pressedNode) &&
+        isNil(editorState.interaction.selectedNode) &&
+        isNil(editorState.interaction.selectedPaths) &&
+        isNotNil(editorState.interaction.selectedPath) &&
+        isNil(editorState.interaction.selectedPathNode)
+      );
     },
     onMouseDown: (editorState: EditorState, mousePoint: Point) => {
       const [nearestPathNode, nearestPathNodeDistance] = getNearestNode(
@@ -164,8 +138,6 @@ const interactPhaseDefs: Record<InteractPhase, InteractPhaseHandler> = {
       );
       if (nearestPathNodeDistance <= CLICK_DETECTION_DISTANCE) {
         editorState.interaction.selectedPathNode = nearestPathNode;
-      } else {
-        editorState.interaction.selectedPath = undefined;
       }
     },
     onMouseMove: (editorState: EditorState, mousePoint: Point) => {},

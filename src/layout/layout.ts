@@ -1,10 +1,14 @@
-import { forEach, isNil, map } from "ramda";
+import { forEach, head, isNil, last, map } from "ramda";
 import {
   getDistance,
   getPointLineDistance,
   getPointsPathLines,
 } from "../geometry/geometry";
 import { Point, Node, Path, Line } from "../types";
+
+export function isPathClosed(path: Path): boolean {
+  return head(path.nodes) === last(path.nodes);
+}
 
 export function getNearestNode(
   nodes: Array<Node>,

@@ -9,6 +9,7 @@ export function onMouseDown(editorState: EditorState, mousePoint: Point) {
     );
   if (!isPhaseValid) return console.warn("Invalid phase");
 
+  editorState.interaction.didMouseMove = false;
   editorState.interaction.clickDownPoint[0] = mousePoint[0];
   editorState.interaction.clickDownPoint[1] = mousePoint[1];
 
@@ -21,6 +22,8 @@ export function onMouseDown(editorState: EditorState, mousePoint: Point) {
 }
 
 export function onMouseMove(editorState: EditorState, mousePoint: Point) {
+  editorState.interaction.didMouseMove = true;
+
   interactPhaseDefs[editorState.interaction.interactPhase].onMouseMove(
     editorState,
     mousePoint

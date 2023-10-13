@@ -60,6 +60,7 @@ export type EditorState = {
   layoutTraversable: LayoutTraversable;
   interaction: {
     clickDownPoint: Point;
+    didMouseMove: boolean;
     pressedNode: Node | undefined;
     selectedNode: Node | undefined;
     selectedPaths: Array<Path> | undefined;
@@ -70,7 +71,6 @@ export type EditorState = {
 };
 export type InteractPhase =
   | "TryPressNode"
-  | "TrySelectNode"
   | "TrySelectPath"
   | "TrySelectPathNode";
 export type InteractPhaseHandler = {

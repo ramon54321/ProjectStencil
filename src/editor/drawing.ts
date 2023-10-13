@@ -1,58 +1,102 @@
 import { forEach, isNotNil, map, values } from "ramda";
 import { debugDrawPath, debugDrawPoint } from "../draw";
-import { EditorState, Path, Node } from "../types";
+import { EditorState, Path, Node, InteractPhase } from "../types";
 
 /**
  * TODO: Move node style away from layout node payload and into separate map by node id.
  * Motivation: Will split the concerns and remove styling from the layout layer.
  */
 
-export function redraw(editorState: EditorState) {
-  const interaction = editorState.interaction;
+/**
+ * TODO: Add dashed lined.
+ * Implementation: Add dash function to any line which splits line into array of lines, perhaps vector walk vertices.
+ */
 
-  reset(editorState);
-
-  // -- Render Editor /////////////////////////////// Render based on interactPhase -- render dashed line by adding dash function to any line which splits line into array of lines, perhaps vector walk vertexes
-
-  // -- Highlight Interesting Nodes
-  if (isNotNil(interaction.pressedNode)) {
-    forEach(
-      (node: Node) => (node.payload.highlight = [0.4, 0.9, 0.5]),
-      interaction.pressedNode.nodes
-    );
-  }
-  if (isNotNil(interaction.selectedNode)) {
-    interaction.selectedNode.payload.highlight = [0.9, 0.4, 0.5];
-    const drawPath = (path: Path) => {
-      debugDrawPath(
-        editorState.app,
-        map((node) => node.point, path.nodes)
+const drawMap: Record<InteractPhase, (editorState: EditorState) => void> = {
+  TryPressNode: (editorState: EditorState) => {
+    // -- Highlight adjacent nodes
+    if (isNotNil(editorState.interaction.pressedNode)) {
+      forEach(
+        (node: Node) => (node.payload.highlight = [0.4, 0.9, 0.5]),
+        editorState.interaction.pressedNode.nodes
       );
-    };
-    forEach(drawPath, interaction.selectedNode.paths);
-  }
-  if (isNotNil(interaction.selectedPath)) {
+    }
+
+    // -- Draw path
     const drawPath = (path: Path) => {
       debugDrawPath(
         editorState.app,
         map((node) => node.point, path.nodes),
-        [0.4, 0.4, 0.95]
+        [0.2, 0.2, 0.2]
       );
     };
-    drawPath(interaction.selectedPath);
-  }
-  if (isNotNil(interaction.selectedPathNode)) {
-    interaction.selectedPathNode.payload.highlight = [0.3, 0.4, 0.9];
-  }
+    forEach(drawPath, values(editorState.layoutTraversable.pathMap));
 
-  // -- Draw Nodes
-  const drawNode = (node: Node) => {
-    const color = node.payload.highlight
-      ? node.payload.highlight
-      : [0.3, 0.3, 0.3];
-    debugDrawPoint(editorState.app, node.point, color as any);
-  };
-  forEach(drawNode, values(editorState.layoutTraversable.nodeMap) as any);
+    // -- Draw nodes
+    const drawNode = (node: Node) => {
+      const color = node.payload.highlight
+        ? node.payload.highlight
+        : [0.3, 0.3, 0.3];
+      debugDrawPoint(editorState.app, node.point, color);
+    };
+    forEach(drawNode, values(editorState.layoutTraversable.nodeMap));
+  },
+
+  TrySelectPath: (editorState: EditorState) => {
+    editorState.interaction.selectedNode!.payload.highlight = [0.9, 0.4, 0.5];
+
+    // -- Draw selected node paths
+    const drawPath = (path: Path) => {
+      if (editorState.interaction.selectedPath === path) return;
+      debugDrawPath(
+        editorState.app,
+        map((node) => node.point, path.nodes),
+        [0.3, 0.3, 0.3]
+      );
+    };
+    forEach(drawPath, editorState.interaction.selectedNode!.paths);
+    if (isNotNil(editorState.interaction.selectedPath)) {
+      debugDrawPath(
+        editorState.app,
+        map((node) => node.point, editorState.interaction.selectedPath.nodes),
+        [0.4, 0.9, 0.5]
+      );
+    }
+
+    // -- Draw nodes
+    const drawNode = (node: Node) => {
+      const color = node.payload.highlight
+        ? node.payload.highlight
+        : [0.3, 0.3, 0.3];
+      debugDrawPoint(editorState.app, node.point, color);
+    };
+    forEach(drawNode, values(editorState.layoutTraversable.nodeMap));
+  },
+
+  TrySelectPathNode: (editorState: EditorState) => {
+    // -- Draw selected path
+    debugDrawPath(
+      editorState.app,
+      map((node) => node.point, editorState.interaction.selectedPath!.nodes),
+      [0.4, 0.9, 0.5]
+    );
+
+    // -- Draw nodes
+    const drawNode = (node: Node) => {
+      const color = node.payload.highlight
+        ? node.payload.highlight
+        : [0.3, 0.3, 0.3];
+      debugDrawPoint(editorState.app, node.point, color);
+    };
+    forEach(drawNode, editorState.interaction.selectedPath!.nodes);
+  },
+};
+
+// -- Render Editor
+export function redraw(editorState: EditorState) {
+  reset(editorState);
+
+  drawMap[editorState.interaction.interactPhase](editorState);
 }
 
 function reset(editorState: EditorState) {
