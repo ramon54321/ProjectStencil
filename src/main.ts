@@ -1,12 +1,18 @@
 import "./style.css";
 import * as PIXI from "pixi.js";
-import { EditorState, LayoutSerializable, Point } from "./types";
-import { isNotNil } from "ramda";
+import { EditorState, KeyEvent, LayoutSerializable, Point } from "./types";
+import { isNotNil, pick } from "ramda";
 import {
   layoutSerializableToTraversable,
   layoutTraversableToSerializable,
 } from "./layout/serialization";
-import { onMouseDown, onMouseMove, onMouseUp } from "./editor/editor";
+import {
+  onKeyDown,
+  onKeyUp,
+  onMouseDown,
+  onMouseMove,
+  onMouseUp,
+} from "./editor/editor";
 
 // -- Setup Canvas
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
@@ -83,9 +89,31 @@ app.view.addEventListener!("mousemove", (e: any) => {
 app.view.addEventListener!("mouseup", (e: any) => {
   onMouseUp(editorState, getEventPosition(e));
 });
+document.addEventListener("keydown", (e: any) => {
+  if (e.repeat) return;
+  const keys = pick(["key", "metaKey", "shiftKey"], e) as KeyEvent;
+  onKeyDown(editorState, getEventPosition(e), keys);
+});
+document.addEventListener("keyup", (e: any) => {
+  const keys = pick(["key", "metaKey", "shiftKey"], e) as KeyEvent;
+  onKeyUp(editorState, getEventPosition(e), keys);
+});
 
 // -- Debug Save
 function save() {
   const layoutSerializable = layoutTraversableToSerializable(layoutTraversable);
   localStorage.setItem("stencil.json", JSON.stringify(layoutSerializable));
 }
+
+//
+// -- Render Composition
+//
+// const composition = composeLayoutTraversable(layoutTraversable);
+// const drawCompositionLayer = (layer: CompositionLayer) => {
+//   const color = layer.style.color;
+//   const drawTriangulation = (triangulation: Triangulation) => {
+//     debugDrawTriangulation(app, triangulation, color, DRAW_MODES.TRIANGLES);
+//   };
+//   forEach(drawTriangulation, layer.triangulations);
+// };
+// forEach(drawCompositionLayer, composition);

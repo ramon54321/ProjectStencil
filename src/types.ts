@@ -78,6 +78,19 @@ export type InteractPhaseHandler = {
   onMouseDown: (editorState: EditorState, mousePoint: Point) => void;
   onMouseMove: (editorState: EditorState, mousePoint: Point) => void;
   onMouseUp: (editorState: EditorState, mousePoint: Point) => void;
-  onKeyDown: (editorState: EditorState, mousePoint: Point, key: string) => void;
-  onKeyUp: (editorState: EditorState, mousePoint: Point, key: string) => void;
+  onKeyDown: (
+    editorState: EditorState,
+    mousePoint: Point,
+    keyEvent: KeyEvent
+  ) => void;
+  onKeyUp: (
+    editorState: EditorState,
+    mousePoint: Point,
+    keyEvent: KeyEvent
+  ) => void;
+};
+export type KeyEvent = {
+  key: string;
+  shiftKey: boolean;
+  metaKey: boolean;
 };

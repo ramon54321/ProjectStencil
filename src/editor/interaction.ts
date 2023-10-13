@@ -5,6 +5,7 @@ import {
   EditorState,
   InteractPhase,
   InteractPhaseHandler,
+  KeyEvent,
   Point,
 } from "../types";
 
@@ -40,8 +41,16 @@ const interactPhaseDefs: Record<InteractPhase, InteractPhaseHandler> = {
         editorState.interaction.interactPhase = "TrySelectNode";
       }
     },
-    onKeyDown: (editorState: EditorState, mousePoint: Point, key: string) => {},
-    onKeyUp: (editorState: EditorState, mousePoint: Point, key: string) => {},
+    onKeyDown: (
+      editorState: EditorState,
+      mousePoint: Point,
+      keyEvent: KeyEvent
+    ) => {},
+    onKeyUp: (
+      editorState: EditorState,
+      mousePoint: Point,
+      keyEvent: KeyEvent
+    ) => {},
   },
 
   TrySelectNode: {
@@ -72,8 +81,16 @@ const interactPhaseDefs: Record<InteractPhase, InteractPhaseHandler> = {
         editorState.interaction.interactPhase = "TryPressNode";
       }
     },
-    onKeyDown: (editorState: EditorState, mousePoint: Point, key: string) => {},
-    onKeyUp: (editorState: EditorState, mousePoint: Point, key: string) => {},
+    onKeyDown: (
+      editorState: EditorState,
+      mousePoint: Point,
+      keyEvent: KeyEvent
+    ) => {},
+    onKeyUp: (
+      editorState: EditorState,
+      mousePoint: Point,
+      keyEvent: KeyEvent
+    ) => {},
   },
 
   TrySelectPath: {
@@ -124,8 +141,16 @@ const interactPhaseDefs: Record<InteractPhase, InteractPhaseHandler> = {
       }
       editorState.interaction.selectedPaths = undefined;
     },
-    onKeyDown: (editorState: EditorState, mousePoint: Point, key: string) => {},
-    onKeyUp: (editorState: EditorState, mousePoint: Point, key: string) => {},
+    onKeyDown: (
+      editorState: EditorState,
+      mousePoint: Point,
+      keyEvent: KeyEvent
+    ) => {},
+    onKeyUp: (
+      editorState: EditorState,
+      mousePoint: Point,
+      keyEvent: KeyEvent
+    ) => {},
   },
 
   TrySelectPathNode: {
@@ -153,8 +178,16 @@ const interactPhaseDefs: Record<InteractPhase, InteractPhaseHandler> = {
         editorState.interaction.interactPhase = "TryPressNode";
       }
     },
-    onKeyDown: (editorState: EditorState, mousePoint: Point, key: string) => {},
-    onKeyUp: (editorState: EditorState, mousePoint: Point, key: string) => {},
+    onKeyDown: (
+      editorState: EditorState,
+      mousePoint: Point,
+      keyEvent: KeyEvent
+    ) => {},
+    onKeyUp: (
+      editorState: EditorState,
+      mousePoint: Point,
+      keyEvent: KeyEvent
+    ) => {},
   },
 };
 
